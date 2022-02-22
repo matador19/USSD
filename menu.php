@@ -66,13 +66,15 @@ include_once 'mydb.php';
            }
         }
 
-        public function sendMoneyMenu($sessionId, $textArray, $senderPhoneNumber){
+        public function sendMoneyMenu($retry,$sessionId, $textArray, $senderPhoneNumber){
             //building menu for user registration 
+
+            save_Session($sessionId);
+
             $level = count($textArray);
             $receiver = null;
             $nameOfReceiver = null;
             $response = "";
-            $retry=0;;
             $text = $_POST["text"];
             if($level == 1){
                 echo "CON Enter mobile number of the receiver:";
@@ -80,54 +82,35 @@ include_once 'mydb.php';
                 echo "CON Enter amount:";
             }else if($level == 3){
                 echo "CON Enter your PIN:";
-            }else if($level == 4){
-                //check pin
-                $pin = $textArray[3];
-               // $pin = hash('sha256',$pin);
-                $conn = opencon();
-                $sql = "SELECT * FROM customer_table WHERE PhoneNumber='$senderPhoneNumber'";
-                $result = $conn->query($sql);
-                $menu=new Menu();
-                if($result->num_rows>0){
-                    while($row = mysqli_fetch_assoc($result)) {
-                        $Senderpin=$row['PIN'];
-                      }
-                    }
-                    $conn->close();
-                    
-                    $conn = opencon();
-                    $text= join('*',$textArray);
-                    $sql = "INSERT INTO session_requests (SessionID, Responses,Retries) VALUES ('$sessionId','$text',0)";
-                    if ($conn->query($sql) === TRUE) {
-                       //
-                    }
-
-                        $conn->close();
-
-                       
-
-                    if($pin!='1010'){
-                        echo"CON pin wrong";
-                        array_pop($textArray);
-                       $text = join('*',$textArray);
-                       $_POST['text']=$text;
+            }else if($level == 4+$retry){
+             
                         
-                      //  pin = array[3]+1
+                //get num of retries
+                //getpin at index 3+numofretries
+                $pin = $textArray[3+$retry];
+                //check in if correct and numof retries =0 ----proceed
+                if($pin=='1010'){
+                    $receiverMobile = $textArray[1];
+                    $receiverMobileWithCountryCode = $this->addCountryCodeToPhoneNumber($receiverMobile);
+                    
+                    $response .= "Send " . $textArray[2] . " to <Put a person's name here> - " . $receiverMobileWithCountryCode . "\n";
+                    $response .= "1. Confirm\n";
+                    $response .= "2. Cancel\n";
+                    $response .= Util::$GO_BACK . " Back\n";
+                    $response .= Util::$GO_TO_MAIN_MENU .  " Main menu\n";
+                    echo "CON " . $response;
 
-                       // check if pin correct
+                }
+                //else pin incorrect 
+                elseif($pin!='1010'){
+                    $retry++;
+                  update_retries($sessionId,$retry);
+                 
+                      echo"CON Retry pin.";
+            }
+              
 
-                    }
-                    else{
-                $receiverMobile = $textArray[1];
-                $receiverMobileWithCountryCode = $this->addCountryCodeToPhoneNumber($receiverMobile);
-                
-                $response .= "Send " . $textArray[2] . " to <Put a person's name here> - " . $receiverMobileWithCountryCode . "\n";
-                $response .= "1. Confirm\n";
-                $response .= "2. Cancel\n";
-                $response .= Util::$GO_BACK . " Back\n";
-                $response .= Util::$GO_TO_MAIN_MENU .  " Main menu\n";
-                echo "CON " . $response;
-                    }
+                    
             }else if($level == 5+$retry && $textArray[4+$retry] == 1){
                 //a confirm
                 //send the money plus
@@ -140,26 +123,27 @@ include_once 'mydb.php';
                     $sql = "SELECT * FROM customer_table WHERE PhoneNumber='$receiverMobile'";
                     $result = $conn->query($sql);
     
-                    if($result->num_rows>0){
+                 if($result->num_rows>0){
                         while($row = mysqli_fetch_assoc($result)) {
                             $Receivername=$row['FName'];
                           }
                           
                         
-                    }
+                 }
                     
                     
-                    $sql="INSERT INTO receipts  (ReceiptNo, CustomerFrom, CustomerTo, PhoneNoFrom, PhoneNoTo, Amount, Time_stamp) 
+                $sql="INSERT INTO receipts  (ReceiptNo, CustomerFrom, CustomerTo, PhoneNoFrom, PhoneNoTo, Amount, Time_stamp) 
                     VALUES (NULL,(SELECT FName FROM customer_table WHERE PhoneNumber = '$senderPhoneNumber' ), '$Receivername', '$senderPhoneNumber', '$receiverMobile', '$amount','$datetime')
                     ";
     
-    if ($conn->query($sql) === TRUE) {
-        successmessage();
-        echo "END We are processing your request. You will receive an SMS shortly";
-    } else {
-            $conn->error;
-            echo "END Failed!";
-            }   
+                if ($conn->query($sql) === TRUE) {
+                    successmessage();
+                    echo "END We are processing your request. You will receive an SMS shortly";
+                }
+                else {
+                    $conn->error;
+                    echo "END Failed!";
+                    }   
     
                     $conn->close();
                 
@@ -173,15 +157,16 @@ include_once 'mydb.php';
                 
 
 
-            }else if($level == 5 && $textArray[4] == 2){
+            }else if($level == 5+$retry && $textArray[4+$retry] == 2){
                 //Cancel
                 echo "END Canceled. Thank you for using our service";
-            }else if($level == 5 && $textArray[4] == Util::$GO_BACK){
+            }else if($level == 5+$retry && $textArray[4+$retry] == Util::$GO_BACK){
                 echo "END You have requested to back to one step - re-enter PIN";
-            }else if($level == 5 && $textArray[4] == Util::$GO_TO_MAIN_MENU){
+            }else if($level == 5+$retry && $textArray[4+$retry] == Util::$GO_TO_MAIN_MENU){
                 echo "END You have requested to back to main menu - to start all over again";
             }else {
-                echo "END Invalid entry"; 
+                $you=join("*",$textArray);
+                echo "END Invalid entry $you"; 
             }
         }
 

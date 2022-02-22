@@ -1,5 +1,6 @@
 <?php  
     include_once 'menu.php';  
+    include_once 'mydb.php';
     
     $isUserRegistered = true;
 
@@ -8,7 +9,7 @@
     $serviceCode = $_POST["serviceCode"];
     $phoneNumber = $_POST["phoneNumber"];
     $text        = $_POST["text"];
-
+    $retry=get_retries($sessionId);
 
     
     $menu = new Menu();
@@ -37,7 +38,7 @@
         $textArray = explode("*", $text);
         switch($textArray[0]){
             case 1: 
-                $menu->sendMoneyMenu($sessionId,$textArray,$phoneNumber);
+                $menu->sendMoneyMenu($retry,$sessionId,$textArray,$phoneNumber);
             break;
             case 2: 
                 $menu->withdrawMoneyMenu($textArray);
