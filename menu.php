@@ -1,9 +1,8 @@
 <?php
-
-    
-
+include_once 'mydb.php';
     include_once 'util.php';
-   // include_once 'sms.php';
+    include_once 'sms.php';
+    //include_once 'functions.php';
     class Menu{
         protected $text;
         protected $sessionId;
@@ -32,33 +31,49 @@
             $level = count($textArray);
            if($level == 1){
                 echo "CON Please enter your full name:";
+                //textarray1
            } else if($level == 2){
                 echo "CON Please enter set you PIN:";
+                //textarray2
            }else if($level == 3){
                 echo "CON Please re-enter your PIN:";
            }else if($level == 4){
-                $name = $textArray[1];
+               $nameexplode = explode(" ",$textArray[1]);
+                $Fname = $nameexplode[0];
+                $Lname = $nameexplode[1];
                 $pin = $textArray[2];
                 $confirmPin = $textArray[3];
                 if($pin != $confirmPin){
                     echo "END Your pins do not match. Please try again";
                 }else{
                     //connect to DB and register a user. 
+                    $conn=opencon();
+
+                $pin = hash('sha256',$pin);
+                $sql = "INSERT INTO customer_table  (Fname, Lname , PhoneNumber , PIN)  VALUES ('$Fname', '$Lname', '$phoneNumber','$pin')";
+                if ($conn->query($sql) === TRUE) {
                     echo "END You have been registered";
-                    $sms = new Sms();
-                    $message = "You have been registered";
-                   // $sms->sendSms($message,$phoneNumber);
                     
+                } else {
+                        $conn->error;
+                        echo "END not registered";
+                        }        
+                    $conn->close();
+                   // $sms = new Sms();
+                   // $message = "You have been registered";
+                   // $sms->sendSms($message,$phoneNumber);
                 }
            }
         }
 
-        public function sendMoneyMenu($textArray, $senderPhoneNumber){
+        public function sendMoneyMenu($sessionId, $textArray, $senderPhoneNumber){
             //building menu for user registration 
             $level = count($textArray);
             $receiver = null;
             $nameOfReceiver = null;
             $response = "";
+            $retry=0;;
+            $text = $_POST["text"];
             if($level == 1){
                 echo "CON Enter mobile number of the receiver:";
             }else if($level == 2){
@@ -66,27 +81,96 @@
             }else if($level == 3){
                 echo "CON Enter your PIN:";
             }else if($level == 4){
+                //check pin
+                $pin = $textArray[3];
+               // $pin = hash('sha256',$pin);
+                $conn = opencon();
+                $sql = "SELECT * FROM customer_table WHERE PhoneNumber='$senderPhoneNumber'";
+                $result = $conn->query($sql);
+                $menu=new Menu();
+                if($result->num_rows>0){
+                    while($row = mysqli_fetch_assoc($result)) {
+                        $Senderpin=$row['PIN'];
+                      }
+                    }
+                    $conn->close();
+                    
+                    $conn = opencon();
+                    $text= join('*',$textArray);
+                    $sql = "INSERT INTO session_requests (SessionID, Responses,Retries) VALUES ('$sessionId','$text',0)";
+                    if ($conn->query($sql) === TRUE) {
+                       //
+                    }
+
+                        $conn->close();
+
+                       
+
+                    if($pin!='1010'){
+                        echo"CON pin wrong";
+                        array_pop($textArray);
+                       $text = join('*',$textArray);
+                       $_POST['text']=$text;
+                        
+                      //  pin = array[3]+1
+
+                       // check if pin correct
+
+                    }
+                    else{
                 $receiverMobile = $textArray[1];
                 $receiverMobileWithCountryCode = $this->addCountryCodeToPhoneNumber($receiverMobile);
                 
-                $response .= "Send " . $textArray[2] . " to <Put a person's name here> - " . $receiverMobile . "\n";
+                $response .= "Send " . $textArray[2] . " to <Put a person's name here> - " . $receiverMobileWithCountryCode . "\n";
                 $response .= "1. Confirm\n";
                 $response .= "2. Cancel\n";
                 $response .= Util::$GO_BACK . " Back\n";
                 $response .= Util::$GO_TO_MAIN_MENU .  " Main menu\n";
                 echo "CON " . $response;
-            }else if($level == 5 && $textArray[4] == 1){
+                    }
+            }else if($level == 5+$retry && $textArray[4+$retry] == 1){
                 //a confirm
                 //send the money plus
-                //check if PIN correct
-                //If you have enough funds including charges etc..
-                $pin = $textArray[3];
+                $receiverMobile = $textArray[1];
+                $datetime = date_create()->format('Y-m-d H:i:s');
                 $amount = $textArray[2];
+            
+                
+                    $conn = opencon();
+                    $sql = "SELECT * FROM customer_table WHERE PhoneNumber='$receiverMobile'";
+                    $result = $conn->query($sql);
+    
+                    if($result->num_rows>0){
+                        while($row = mysqli_fetch_assoc($result)) {
+                            $Receivername=$row['FName'];
+                          }
+                          
+                        
+                    }
+                    
+                    
+                    $sql="INSERT INTO receipts  (ReceiptNo, CustomerFrom, CustomerTo, PhoneNoFrom, PhoneNoTo, Amount, Time_stamp) 
+                    VALUES (NULL,(SELECT FName FROM customer_table WHERE PhoneNumber = '$senderPhoneNumber' ), '$Receivername', '$senderPhoneNumber', '$receiverMobile', '$amount','$datetime')
+                    ";
+    
+    if ($conn->query($sql) === TRUE) {
+        successmessage();
+        echo "END We are processing your request. You will receive an SMS shortly";
+    } else {
+            $conn->error;
+            echo "END Failed!";
+            }   
+    
+                    $conn->close();
+                
+                
+
+   
 
                 //connect to DB
                 //Complete transaction
 
-                echo "END We are processing your request. You will receive an SMS shortly";
+                
 
 
             }else if($level == 5 && $textArray[4] == 2){

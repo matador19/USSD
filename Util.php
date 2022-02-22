@@ -10,7 +10,7 @@
 
         static $COMPANY_NAME = "<SENDER ID here>";
 
-        static $COUNTRY_CODE = "YOu country code here e.g. +254";
+        static $COUNTRY_CODE = "+254";
         
     }
 ?>

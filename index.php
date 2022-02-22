@@ -17,7 +17,7 @@
     
     if($text == "" && $isUserRegistered == true){
          //user is registered and string is is empty
-        echo "CON " . $menu->mainMenuRegistered("Dennis");
+        echo "CON " . $menu->mainMenuRegistered("Alex");
     }else if($text == "" && $isUserRegistered== false){
          //user is unregistered and string is is empty
          $menu->mainMenuUnRegistered();
@@ -37,7 +37,7 @@
         $textArray = explode("*", $text);
         switch($textArray[0]){
             case 1: 
-                $menu->sendMoneyMenu($textArray,$sessionId);
+                $menu->sendMoneyMenu($sessionId,$textArray,$phoneNumber);
             break;
             case 2: 
                 $menu->withdrawMoneyMenu($textArray);
