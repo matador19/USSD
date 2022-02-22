@@ -14,5 +14,48 @@ function opencon(){
   }
   return $conn;
 }
+
+function get_retries($sessionId){
+  $retry=0;
+  $conn = opencon();
+  $sql = "SELECT * FROM session_requests WHERE SessionID='$sessionId'";
+  $result = $conn->query($sql);
+  if($result->num_rows>0){
+      while($row = mysqli_fetch_assoc($result)) {
+          $retry=$row['Retries'];
+        }
+      }
+      $conn->close();
+      return $retry;
+  }
+function update_retries($sessionId,$retry){
+          $conn = opencon();
+          $sql = "UPDATE session_requests SET Retries=$retry WHERE SessionID='$sessionId'";
+          if ($conn->query($sql) === TRUE) {
+              //
+            } else {
+               $conn->error;
+            }
+            $conn->close();
+            
+   }
+  function save_Session($sessionId){
+    $conn = opencon();
+  
+    $sql = "SELECT * FROM session_requests WHERE SessionID='$sessionId'";
+  $result = $conn->query($sql);
+  if($result->num_rows>0){
+      //
+      }
+      else{
+            $sql = "INSERT INTO session_requests (SessionID) VALUES ('$sessionId')";
+            if ($conn->query($sql) === TRUE) {
+               //
+            }
+          }
+
+                $conn->close();
+  }
+
    ?>
    
